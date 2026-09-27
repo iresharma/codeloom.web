@@ -1,0 +1,238 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --color-ink: #16130f;
+  --color-panel: #1f1a14;
+  --color-rule: #3a3228;
+  --color-paper: #e8e0d4;
+  --color-mute: #9a8f80;
+  --color-copper: #c45c26;
+
+  --color-canvas: #111111;
+  --color-surface: #191919;
+  --color-line: #2c2c2c;
+  --color-fg: #e6e6e6;
+  --color-muted: #8f8f8f;
+  --color-ok: #6aa87a;
+  --color-warn: #c9a227;
+  --color-danger: #e06c6c;
+}
+
+html,
+body {
+  height: 100%;
+  background: var(--color-canvas);
+  color: var(--color-fg);
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+.landing {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+::selection {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.landing ::selection {
+  background: rgba(196, 92, 38, 0.35);
+}
+
+textarea,
+input,
+button {
+  font: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 1px solid var(--color-fg);
+  outline-offset: 2px;
+}
+
+.landing a:focus-visible,
+.landing button:focus-visible {
+  outline-color: var(--color-copper);
+}
+
+.file-code .hljs {
+  background: transparent !important;
+  padding: 0 !important;
+  color: #c9d1d9;
+}
+
+.file-code pre {
+  background: transparent !important;
+}
+
+.file-code .hljs-keyword,
+.file-code .hljs-doctag,
+.file-code .hljs-type,
+.file-code .hljs-variable.language_,
+.md .hljs-keyword,
+.md .hljs-doctag,
+.md .hljs-type,
+.md .hljs-variable.language_ {
+  color: #ff7b72;
+}
+
+.file-code .hljs-title,
+.file-code .hljs-title.class_,
+.file-code .hljs-title.function_,
+.md .hljs-title,
+.md .hljs-title.class_,
+.md .hljs-title.function_ {
+  color: #d2a8ff;
+}
+
+.file-code .hljs-built_in,
+.file-code .hljs-symbol,
+.md .hljs-built_in,
+.md .hljs-symbol {
+  color: #ffa657;
+}
+
+.file-code .hljs-string,
+.file-code .hljs-regexp,
+.md .hljs-string,
+.md .hljs-regexp {
+  color: #a5d6ff;
+}
+
+.file-code .hljs-number,
+.file-code .hljs-literal,
+.file-code .hljs-attr,
+.file-code .hljs-variable,
+.md .hljs-number,
+.md .hljs-literal,
+.md .hljs-attr,
+.md .hljs-variable {
+  color: #79c0ff;
+}
+
+.file-code .hljs-comment,
+.md .hljs-comment {
+  color: #8b949e;
+}
+
+.file-code .hljs-meta,
+.md .hljs-meta {
+  color: #79c0ff;
+}
+
+.md {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--color-fg);
+}
+
+.md > :first-child {
+  margin-top: 0;
+}
+
+.md > :last-child {
+  margin-bottom: 0;
+}
+
+.md p,
+.md ul,
+.md ol,
+.md pre,
+.md blockquote {
+  margin: 0.6em 0;
+}
+
+.md h1,
+.md h2,
+.md h3 {
+  margin: 1em 0 0.4em;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.md h1 {
+  font-size: 1.25em;
+}
+
+.md h2 {
+  font-size: 1.1em;
+}
+
+.md h3 {
+  font-size: 1em;
+}
+
+.md ul,
+.md ol {
+  padding-left: 1.25em;
+}
+
+.md ul {
+  list-style: disc;
+}
+
+.md ol {
+  list-style: decimal;
+}
+
+.md li + li {
+  margin-top: 0.2em;
+}
+
+.md blockquote {
+  border-left: 2px solid var(--color-line);
+  padding-left: 0.75em;
+  color: var(--color-muted);
+}
+
+.md a {
+  color: #9ecbff;
+}
+
+.md table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.md th,
+.md td {
+  border: 1px solid var(--color-line);
+  padding: 0.35em 0.5em;
+  text-align: left;
+}
+
+.md .hljs {
+  background: transparent;
+  color: #c9d1d9;
+}
+
+.diff-view {
+  min-width: 0;
+}
+
+.diff-view table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.diff-view td {
+  overflow-wrap: anywhere;
+}
+
+.diff-view pre {
+  margin: 0;
+  background: transparent !important;
+}
+
