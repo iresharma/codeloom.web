@@ -2,14 +2,11 @@
 
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
 
+import { CUSTOM_MODEL, isKnownPreset } from "@/lib/models";
+
+import { ModelPicker } from "./ModelPicker";
+
 const STORAGE_KEY = "codeloom.model";
-const CUSTOM = "__custom__";
-const PRESETS = [
-  { value: "", label: "Default" },
-  { value: "openai/gpt-5.6-luna", label: "GPT-5.6 Luna" },
-  { value: "anthropic/claude-haiku-4.5", label: "Haiku 4.5" },
-  { value: CUSTOM, label: "Custom" },
-];
 
 type StoredModel = { preset: string; custom: string };
 
@@ -19,7 +16,12 @@ function readStored(): StoredModel {
     if (!raw) return { preset: "", custom: "" };
     const parsed = JSON.parse(raw) as StoredModel;
     if (typeof parsed?.preset === "string") {
-      return { preset: parsed.preset, custom: String(parsed.custom ?? "") };
+      const preset = parsed.preset;
+      const custom = String(parsed.custom ?? "");
+      if (preset && !isKnownPreset(preset)) {
+        return { preset: CUSTOM_MODEL, custom: custom || preset };
+      }
+      return { preset, custom };
     }
   } catch {
     /* ignore quota / private mode */
@@ -37,7 +39,7 @@ function writeStored(value: StoredModel) {
 
 function resolveModel(preset: string, custom: string): string | undefined {
   if (!preset) return undefined;
-  if (preset === CUSTOM) {
+  if (preset === CUSTOM_MODEL) {
     const id = custom.trim();
     return id || undefined;
   }
@@ -109,28 +111,17 @@ export function Composer({
         placeholder={running ? "Agent is working…" : "Ask the orchestrator…"}
         className="min-h-[2.75rem] flex-1 resize-none border border-line bg-canvas px-3 py-2 text-[13px] text-fg outline-none placeholder:text-muted focus:border-muted disabled:opacity-50"
       />
-      <div className="flex flex-col gap-1.5">
-        <label className="sr-only" htmlFor="composer-model">
-          Model
-        </label>
-        <select
+      <div className="flex w-[12.5rem] flex-col gap-1.5">
+        <ModelPicker
           id="composer-model"
           value={preset}
           disabled={disabled}
-          onChange={(event) => {
-            const next = event.target.value;
+          onChange={(next) => {
             setPreset(next);
             persist(next, custom);
           }}
-          className="max-w-[9.5rem] border border-line bg-canvas px-2 py-1.5 text-[11px] text-fg outline-none focus:border-muted disabled:opacity-40"
-        >
-          {PRESETS.map((option) => (
-            <option key={option.value || "default"} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        {preset === CUSTOM ? (
+        />
+        {preset === CUSTOM_MODEL ? (
           <input
             value={custom}
             disabled={disabled}
@@ -140,7 +131,7 @@ export function Composer({
               persist(preset, next);
             }}
             placeholder="openrouter id"
-            className="w-[9.5rem] border border-line bg-canvas px-2 py-1 text-[11px] text-fg outline-none placeholder:text-muted focus:border-muted disabled:opacity-40"
+            className="w-full border border-line bg-canvas px-2 py-1 text-[11px] text-fg outline-none placeholder:text-muted focus:border-muted disabled:opacity-40"
           />
         ) : null}
         <button

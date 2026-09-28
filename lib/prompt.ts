@@ -106,6 +106,10 @@ export function isTurnCapPrompt(prompt: PendingPrompt): boolean {
   return key(prompt.kind) === "choice" && [...TURN_CAP].every((name) => names.has(name));
 }
 
+export function isInterviewPrompt(prompt: PendingPrompt): boolean {
+  return key(prompt.kind).replace(/\s+/g, "_") === "interview";
+}
+
 /** Same replies as the engine `--auto` client. Turn-cap: one continue, then the engine hands off. */
 export function autoAnswer(prompt: PendingPrompt, settle = "keep"): string {
   if (isSettlePrompt(prompt)) {
@@ -143,6 +147,7 @@ export function writeAutoMode(on: boolean): void {
 
 export function promptTitle(prompt: PendingPrompt): string {
   if (isPermissionPrompt(prompt)) return "Permission needed";
+  if (isInterviewPrompt(prompt)) return "Clarify the request";
   if (prompt.kind.trim()) return prompt.kind.replace(/[_-]+/g, " ");
   return "Agent needs input";
 }

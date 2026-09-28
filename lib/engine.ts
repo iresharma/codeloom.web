@@ -91,6 +91,16 @@ function itemsFor(state: EngineState, agentId: string): ChatItem[] {
   return state.itemsByAgent[agentId] ?? [];
 }
 
+export function itemsForAgent(itemsByAgent: Record<string, ChatItem[]>, agentId: string): ChatItem[] {
+  const exact = itemsByAgent[agentId];
+  if ((exact && exact.length > 0) || !agentId) return exact ?? [];
+  const matches = Object.keys(itemsByAgent).filter(
+    (key) => key && key !== agentId && (key.startsWith(agentId) || agentId.startsWith(key)),
+  );
+  if (matches.length === 1) return itemsByAgent[matches[0]] ?? [];
+  return exact ?? [];
+}
+
 function setItems(state: EngineState, agentId: string, items: ChatItem[]): EngineState {
   return {
     ...state,
@@ -177,11 +187,18 @@ export function reduceEngine(state: EngineState, event: EngineEvent): EngineStat
   if (type === "ChatMessageAdded" || type === "ChatHistoryAdded") {
     const id = String(event.id ?? "");
     const text = String(event.text ?? "");
+    // A transcript replay starts at index 0. Replace that agent's items
+    // instead of appending onto a cleared list (which flashes the new-chat
+    // empty state) or onto a previous replay.
+    const prior =
+      type === "ChatHistoryAdded" && Number(event.index) === 0
+        ? []
+        : itemsFor(state, agentId);
     const next = setItems(
       state,
       agentId,
       upsertMessage(
-        itemsFor(state, agentId),
+        prior,
         {
           kind: "message",
           id,
@@ -357,6 +374,3 @@ export function reduceEngine(state: EngineState, event: EngineEvent): EngineStat
   return state;
 }
 
-export function clearTranscript(state: EngineState, agentId: string): EngineState {
-  return setItems(state, agentId, []);
-}

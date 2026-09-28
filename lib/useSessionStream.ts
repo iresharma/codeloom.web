@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { wsUrl } from "./config";
-import { clearTranscript, initialEngineState, reduceEngine, type EngineState } from "./engine";
+import { initialEngineState, reduceEngine, type EngineState } from "./engine";
 import type { EngineEvent } from "./types";
 
 export function useSessionStream(sessionId: string | null, token: string | null, enabled: boolean) {
@@ -51,10 +51,7 @@ export function useSessionStream(sessionId: string | null, token: string | null,
         send({ type: "RequestContext", agent_id: "" });
         return;
       }
-      setState((current) => ({
-        ...clearTranscript(current, agentId),
-        selectedAgentId: agentId,
-      }));
+      setState((current) => ({ ...current, selectedAgentId: agentId }));
       send({ type: "RequestAgentTranscript", agent_id: agentId });
       send({ type: "RequestContext", agent_id: agentId });
     },

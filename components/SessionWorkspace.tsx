@@ -5,13 +5,13 @@ import { useParams } from "next/navigation";
 
 import { packArchive, readLocalArchive, writeLocalArchive } from "@/lib/archive";
 import { api } from "@/lib/api";
-import { autoAnswer, readAutoMode, writeAutoMode } from "@/lib/prompt";
+import { autoAnswer, isInterviewPrompt, readAutoMode, writeAutoMode } from "@/lib/prompt";
 import { useAuth } from "@/lib/useAuth";
 import { useSessionStream } from "@/lib/useSessionStream";
 import { useWorkspace } from "@/lib/useWorkspace";
 import { mergeGit, type ChatItem, type Session, type SessionArchive } from "@/lib/types";
 import { formatCost, formatTokens, hydrateAgents } from "@/lib/agents";
-import { dismissPrompt, type EngineState } from "@/lib/engine";
+import { dismissPrompt, itemsForAgent, type EngineState } from "@/lib/engine";
 import { clipTitle } from "@/lib/workspace";
 
 import { Composer } from "./Composer";
@@ -39,7 +39,7 @@ function isOpenFileError(message: string | null, path: string | null): boolean {
 }
 
 function isRunning(state: EngineState): boolean {
-  const items = state.itemsByAgent[state.selectedAgentId] ?? [];
+  const items = itemsForAgent(state.itemsByAgent, state.selectedAgentId);
   if (items.some((item) => item.kind === "message" && item.streaming)) return true;
   if (items.some((item) => item.kind === "tool" && item.ok === undefined)) return true;
   if (state.selectedAgentId) {
@@ -101,7 +101,7 @@ export function SessionWorkspace() {
 
   const agents = hydrateAgents(state.agents, state.stats, state.itemsByAgent);
   const git = mergeGit(state.git, state.editedPaths ?? []);
-  const items = state.itemsByAgent[state.selectedAgentId] ?? [];
+  const items = itemsForAgent(state.itemsByAgent, state.selectedAgentId);
   const conversation = (state.itemsByAgent[""] ?? []).length ? (state.itemsByAgent[""] ?? []) : items;
   const running = isRunning({ ...state, agents });
   const transcriptRef = useRef<HTMLDivElement>(null);
@@ -224,6 +224,8 @@ export function SessionWorkspace() {
       if (!prompt) answeringRef.current = null;
       return;
     }
+    // Interview prompts stay visible so the user can clarify even with Auto on.
+    if (isInterviewPrompt(prompt)) return;
     const key = prompt.prompt_id || prompt.question;
     if (answeringRef.current === key) return;
     answeringRef.current = key;
@@ -349,6 +351,7 @@ export function SessionWorkspace() {
                   prefill={prefill}
                   onSend={(text, model) => {
                     rememberTitle(text);
+                    if (state.selectedAgentId) selectAgent("");
                     const payload: { type: string; text: string; model?: string } = {
                       type: "SubmitUserMessage",
                       text,

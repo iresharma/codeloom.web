@@ -258,6 +258,26 @@ export function Transcript({
   const visible = visibleChatItems(items);
 
   if (visible.length === 0) {
+    if (selectedAgentId) {
+      const agent = agents.find((row) => row.id === selectedAgentId);
+      const title = agent?.profile || agent?.role || "Agent";
+      return (
+        <div className="flex min-h-full flex-col">
+          <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+            <h2 className="text-[15px] text-fg">{title}</h2>
+            <p className="mt-2 max-w-sm whitespace-pre-wrap text-[13px] leading-5 text-muted">
+              {agent?.task?.trim() || "No messages from this agent yet."}
+            </p>
+          </div>
+          <ActivityLine
+            items={items}
+            agents={agents}
+            selectedAgentId={selectedAgentId}
+            pendingPrompt={pendingPrompt}
+          />
+        </div>
+      );
+    }
     return (
       <div className="flex min-h-full flex-col">
         <EmptyChat repo={repo ?? ""} branch={branch ?? ""} onSuggest={onSuggest} />
@@ -296,6 +316,16 @@ export function Transcript({
               </div>
               {item.text.trim() ? <Markdown text={item.text} /> : null}
             </article>
+          );
+        }
+        if (item.role.toLowerCase() === "tool") {
+          return (
+            <pre
+              key={item.id}
+              className="max-h-48 overflow-auto whitespace-pre-wrap border border-line bg-surface px-2.5 py-2 font-mono text-[11px] leading-4 text-fg/80"
+            >
+              {item.text}
+            </pre>
           );
         }
         return null;

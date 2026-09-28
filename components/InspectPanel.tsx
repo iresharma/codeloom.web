@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { isAgentActive } from "@/lib/agents";
+import { itemsForAgent } from "@/lib/engine";
 import { fileDir, fileName } from "@/lib/files";
 import type { AgentRow, ChatItem, FileTreeNode, GitState, Stats } from "@/lib/types";
 
@@ -92,7 +93,7 @@ export function InspectPanel({
   const changeCount =
     (git?.staged?.length ?? 0) + (git?.unstaged?.length ?? 0) + (git?.untracked?.length ?? 0);
   const selected = selectedAgentId ? agents.find((row) => row.id === selectedAgentId) ?? null : null;
-  const items = itemsByAgent[selectedAgentId] ?? [];
+  const items = itemsForAgent(itemsByAgent, selectedAgentId);
 
   if (collapsed) {
     return (

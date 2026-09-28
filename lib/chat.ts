@@ -1,6 +1,6 @@
 import type { AgentRow, AgentRun, ChatItem, ChatMessage, ChatTool, PendingPrompt, Stats } from "./types";
 
-const VISIBLE_ROLES = new Set(["user", "assistant"]);
+const VISIBLE_ROLES = new Set(["user", "assistant", "tool"]);
 
 export function visibleChatItems(items: ChatItem[]): ChatItem[] {
   return items.filter((item) => {
