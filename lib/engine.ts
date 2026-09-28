@@ -1,4 +1,4 @@
-import { mergeAgents, upsertAgent } from "./agents";
+import { applyAgentReport, applyAgentRuns, mergeAgents, upsertAgent } from "./agents";
 import { readChoices } from "./prompt";
 import type {
   AgentRow,
@@ -30,10 +30,11 @@ export type EngineState = {
   agents: AgentRow[];
   selectedAgentId: string;
   fileTree: FileTreeNode[];
-  openFile: { path: string; content: string } | null;
+  openFile: { path: string; content: string; original?: string | null } | null;
   pendingPrompt: PendingPrompt | null;
   answeredPromptIds: string[];
   git: GitState | null;
+  editedPaths: string[];
   stats: Stats | null;
   error: string | null;
 };
@@ -47,6 +48,7 @@ export const initialEngineState: EngineState = {
   pendingPrompt: null,
   answeredPromptIds: [],
   git: null,
+  editedPaths: [],
   stats: null,
   error: null,
 };
@@ -73,6 +75,16 @@ export function dismissPrompt(state: EngineState, prompt: PendingPrompt): Engine
 
 function agentKey(event: EngineEvent): string {
   return typeof event.agent_id === "string" ? event.agent_id : "";
+}
+
+function num(value: unknown, fallback?: number): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  return fallback;
+}
+
+function int(value: unknown, fallback?: number): number | undefined {
+  const next = num(value, fallback);
+  return next == null ? undefined : Math.round(next);
 }
 
 function itemsFor(state: EngineState, agentId: string): ChatItem[] {
@@ -126,11 +138,12 @@ export function reduceEngine(state: EngineState, event: EngineEvent): EngineStat
     const nextPending = wasAnswered(state, pending)
       ? null
       : pending ?? (wasAnswered(state, state.pendingPrompt) ? null : state.pendingPrompt);
+    const stats = (snapshot.stats as Stats) ?? state.stats;
     return {
       ...state,
-      agents,
+      agents: applyAgentRuns(agents, stats?.agent_runs),
       git: (snapshot.git as GitState) ?? state.git,
-      stats: (snapshot.stats as Stats) ?? state.stats,
+      stats,
       pendingPrompt: nextPending,
       error: null,
     };
@@ -163,7 +176,8 @@ export function reduceEngine(state: EngineState, event: EngineEvent): EngineStat
 
   if (type === "ChatMessageAdded" || type === "ChatHistoryAdded") {
     const id = String(event.id ?? "");
-    return setItems(
+    const text = String(event.text ?? "");
+    const next = setItems(
       state,
       agentId,
       upsertMessage(
@@ -172,12 +186,13 @@ export function reduceEngine(state: EngineState, event: EngineEvent): EngineStat
           kind: "message",
           id,
           role: String(event.role ?? "assistant"),
-          text: String(event.text ?? ""),
+          text,
           streaming: false,
         },
         true,
       ),
     );
+    return { ...next, agents: applyAgentReport(next.agents, text) };
   }
 
   if (type === "ChatHistoryComplete") {
@@ -203,11 +218,12 @@ export function reduceEngine(state: EngineState, event: EngineEvent): EngineStat
 
   if (type === "ToolCallFinished") {
     const callId = String(event.call_id ?? "");
+    const preview = String(event.preview ?? "");
     const items = itemsFor(state, agentId).map((item) => {
       if (item.kind === "tool" && item.call_id === callId) {
         return {
           ...item,
-          preview: String(event.preview ?? ""),
+          preview,
           ok: Boolean(event.ok),
           duration_ms: Number(event.duration_ms ?? 0),
         };
@@ -221,7 +237,7 @@ export function reduceEngine(state: EngineState, event: EngineEvent): EngineStat
     const agents = Array.isArray(event.agents)
       ? mergeAgents(state.agents, event.agents as AgentRow[])
       : state.agents;
-    return { ...state, agents };
+    return { ...state, agents: applyAgentRuns(agents, state.stats?.agent_runs) };
   }
 
   if (type === "AgentStarted") {
@@ -234,6 +250,9 @@ export function reduceEngine(state: EngineState, event: EngineEvent): EngineStat
       status: "running",
       parent_id: typeof event.parent_id === "string" ? event.parent_id : "",
       task: typeof event.task === "string" ? event.task : "",
+      worktree: typeof event.worktree === "string" ? event.worktree : "",
+      branch: typeof event.branch === "string" ? event.branch : "",
+      started_at: Date.now(),
     };
     return { ...state, agents: upsertAgent(state.agents, next) };
   }
@@ -250,8 +269,22 @@ export function reduceEngine(state: EngineState, event: EngineEvent): EngineStat
       parent_id: existing?.parent_id ?? (typeof event.parent_id === "string" ? event.parent_id : ""),
       task: existing?.task ?? (typeof event.task === "string" ? event.task : ""),
       branch: existing?.branch,
+      worktree: existing?.worktree,
+      run_status: String(event.status ?? existing?.run_status ?? ""),
+      summary: String(event.summary ?? existing?.summary ?? ""),
+      cost: num(event.cost, existing?.cost),
+      prompt_tokens: int(event.prompt_tokens, existing?.prompt_tokens),
+      cached_tokens: int(event.cached_tokens, existing?.cached_tokens),
+      total_tokens: int(event.total_tokens, existing?.total_tokens),
+      requests: int(event.requests, existing?.requests),
+      started_at: existing?.started_at,
+      duration_ms:
+        existing?.started_at != null ? Math.max(0, Date.now() - existing.started_at) : existing?.duration_ms,
     };
-    return { ...state, agents: upsertAgent(state.agents, next) };
+    return {
+      ...state,
+      agents: applyAgentRuns(upsertAgent(state.agents, next), state.stats?.agent_runs),
+    };
   }
 
   if (type === "AgentStateChanged") {
@@ -270,10 +303,22 @@ export function reduceEngine(state: EngineState, event: EngineEvent): EngineStat
   }
 
   if (type === "FileContent") {
+    const original = event.original;
     return {
       ...state,
-      openFile: { path: String(event.path ?? ""), content: String(event.content ?? "") },
+      openFile: {
+        path: String(event.path ?? ""),
+        content: String(event.content ?? ""),
+        original: typeof original === "string" ? original : null,
+      },
     };
+  }
+
+  if (type === "FileEdited") {
+    const path = String(event.path ?? "").trim();
+    const edited = state.editedPaths ?? [];
+    if (!path || edited.includes(path)) return state;
+    return { ...state, editedPaths: [...edited, path] };
   }
 
   if (type === "GitStateUpdated") {
@@ -281,7 +326,8 @@ export function reduceEngine(state: EngineState, event: EngineEvent): EngineStat
   }
 
   if (type === "StatsUpdated") {
-    return { ...state, stats: (event.stats as Stats) ?? state.stats };
+    const stats = (event.stats as Stats) ?? state.stats;
+    return { ...state, stats, agents: applyAgentRuns(state.agents, stats?.agent_runs) };
   }
 
   if (type === "UserPromptRequested") {

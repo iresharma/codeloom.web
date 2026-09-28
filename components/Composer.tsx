@@ -1,19 +1,28 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, useState } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
 
 export function Composer({
   disabled,
   running,
+  prefill,
   onSend,
   onAbort,
 }: {
   disabled: boolean;
   running: boolean;
+  prefill?: { id: number; text: string } | null;
   onSend: (text: string) => void;
   onAbort: () => void;
 }) {
   const [text, setText] = useState("");
+  const field = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!prefill) return;
+    setText(prefill.text);
+    field.current?.focus();
+  }, [prefill]);
 
   function submit(event?: FormEvent) {
     event?.preventDefault();
@@ -42,6 +51,7 @@ export function Composer({
         onKeyDown={onKeyDown}
         disabled={disabled}
         rows={2}
+        ref={field}
         placeholder={running ? "Agent is working…" : "Ask the orchestrator…"}
         className="min-h-[2.75rem] flex-1 resize-none border border-line bg-canvas px-3 py-2 text-[13px] text-fg outline-none placeholder:text-muted focus:border-muted disabled:opacity-50"
       />

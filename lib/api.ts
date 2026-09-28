@@ -1,5 +1,5 @@
 import { API_URL } from "./config";
-import type { Project, Repo, Session, User } from "./types";
+import type { Project, Repo, Session, SessionArchive, User } from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -44,6 +44,20 @@ export const api = {
   createSession: (token: string, projectId: string) =>
     request<Session>(`/projects/${projectId}/sessions`, token, { method: "POST" }),
   session: (token: string, id: string) => request<Session>(`/sessions/${id}`, token),
+  setSessionTitle: (token: string, id: string, title: string) =>
+    request<Session>(`/sessions/${id}`, token, {
+      method: "PATCH",
+      body: JSON.stringify({ title }),
+    }),
   stopSession: (token: string, id: string) =>
     request<Session>(`/sessions/${id}`, token, { method: "DELETE" }),
+  deleteSession: (token: string, id: string) =>
+    request<void>(`/sessions/${id}/record`, token, { method: "DELETE" }),
+  archive: (token: string, id: string) =>
+    request<SessionArchive>(`/sessions/${id}/archive`, token),
+  saveArchive: (token: string, id: string, archive: SessionArchive) =>
+    request<SessionArchive>(`/sessions/${id}/archive`, token, {
+      method: "PUT",
+      body: JSON.stringify(archive),
+    }),
 };

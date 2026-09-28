@@ -9,6 +9,9 @@ export type PromptAction = {
 const YES = new Set(["yes", "y", "allow", "approve", "ok", "okay", "accept", "continue"]);
 const NO = new Set(["no", "n", "deny", "reject", "refuse", "cancel", "decline"]);
 const ALWAYS = new Set(["always", "always allow", "alwaysallow", "allow always"]);
+const SETTLE = new Set(["merge", "pr", "keep", "discard"]);
+const TURN_CAP = new Set(["continue", "handoff", "stop"]);
+const AUTO_STORAGE_KEY = "codeloom.auto";
 const PERMISSION_KINDS = new Set([
   "permission",
   "permissions",
@@ -87,6 +90,55 @@ export function promptActions(prompt: PendingPrompt): PromptAction[] | null {
   ];
   if (always) actions.push({ label: "Always allow", value: always, tone: "neutral" });
   return actions;
+}
+
+function choiceSet(prompt: PendingPrompt): Set<string> {
+  return new Set(prompt.choices.map((choice) => choice.trim().toLowerCase()));
+}
+
+export function isSettlePrompt(prompt: PendingPrompt): boolean {
+  const names = choiceSet(prompt);
+  return names.size === SETTLE.size && [...SETTLE].every((name) => names.has(name));
+}
+
+export function isTurnCapPrompt(prompt: PendingPrompt): boolean {
+  const names = choiceSet(prompt);
+  return key(prompt.kind) === "choice" && [...TURN_CAP].every((name) => names.has(name));
+}
+
+/** Same replies as the engine `--auto` client. Turn-cap: one continue, then the engine hands off. */
+export function autoAnswer(prompt: PendingPrompt, settle = "keep"): string {
+  if (isSettlePrompt(prompt)) {
+    const action = settle.trim().toLowerCase();
+    return SETTLE.has(action) ? action : "keep";
+  }
+  if (key(prompt.kind).replace(/\s+/g, "_") === "mcp_auth") return "no";
+  if (isTurnCapPrompt(prompt)) return "continue";
+  if (isPermissionPrompt(prompt)) {
+    return pickValue(
+      prompt.choices,
+      [...YES],
+      prompt.default && YES.has(key(prompt.default)) ? prompt.default : "yes",
+    );
+  }
+  if (prompt.default?.trim()) return prompt.default.trim();
+  return "yes";
+}
+
+export function readAutoMode(): boolean {
+  try {
+    return window.localStorage.getItem(AUTO_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function writeAutoMode(on: boolean): void {
+  try {
+    window.localStorage.setItem(AUTO_STORAGE_KEY, on ? "1" : "0");
+  } catch {
+    /* ignore quota / private mode */
+  }
 }
 
 export function promptTitle(prompt: PendingPrompt): string {

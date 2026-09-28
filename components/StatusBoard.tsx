@@ -8,8 +8,9 @@ import {
   BOARD_COLUMNS,
   flattenSessions,
   formatWhen,
+  sessionActivity,
+  sessionLabel,
   sessionsInColumn,
-  shortId,
   type ProjectWithSessions,
 } from "@/lib/workspace";
 
@@ -29,14 +30,26 @@ function SessionCard({
         className="block border border-line bg-surface px-3 py-2 hover:bg-canvas"
       >
         <div className="flex items-center justify-between gap-2">
-          <span className="flex items-center gap-2 font-mono text-[12px] text-fg">
+          <span className="flex min-w-0 items-center gap-2 text-[13px] text-fg">
             <StatusDot status={session.status} />
-            {session.branch} · {shortId(session.id)}
+            <span className="truncate">{sessionLabel(session)}</span>
           </span>
-          <span className="text-[12px] text-muted">{session.status}</span>
+          <span
+            className={`text-[12px] ${
+              session.status === "ready"
+                ? "text-ok"
+                : session.status === "provisioning"
+                  ? "text-warn"
+                  : session.status === "error"
+                    ? "text-danger"
+                    : "text-muted"
+            }`}
+          >
+            {sessionActivity(session.status)}
+          </span>
         </div>
         <div className="mt-1 truncate text-[12px] text-muted">
-          {repo} · {formatWhen(session.created_at)}
+          {repo} · {session.branch} · {formatWhen(session.created_at)}
         </div>
         {session.error ? (
           <pre className="mt-2 max-h-16 overflow-auto whitespace-pre-wrap font-mono text-[11px] text-danger">

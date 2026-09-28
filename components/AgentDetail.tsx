@@ -54,7 +54,13 @@ export function AgentDetail({
         <Stat label="Cost" value={formatCost(stats.cost)} />
         <Stat
           label="LLM calls"
-          value={sessionStats?.requests != null ? String(sessionStats.requests) : stats.turns != null ? String(stats.turns) : "—"}
+          value={
+            isRoot && sessionStats?.requests != null
+              ? String(sessionStats.requests)
+              : stats.turns != null
+                ? String(stats.turns)
+                : "—"
+          }
         />
         <Stat label="Files" value={String(stats.files.length)} />
       </section>

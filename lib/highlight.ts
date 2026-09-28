@@ -99,6 +99,13 @@ export function highlightCode(path: string, code: string): string {
   return highlightLanguage(languageForPath(path), code);
 }
 
+/** Refractor language name for the diff viewer, when one is registered. */
+export function diffLanguage(path: string): string | undefined {
+  const language = languageForPath(path);
+  if (!language || language === "dockerfile") return undefined;
+  return language;
+}
+
 export function highlightLanguage(language: string | null, code: string): string {
   if (!language) return escapeHtml(code);
   try {

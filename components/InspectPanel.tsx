@@ -109,7 +109,7 @@ export function InspectPanel({
   }
 
   return (
-    <aside className={`flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-l border-line bg-surface ${tab === "agents" ? "w-[440px]" : "w-[260px]"}`}>
+    <aside className="flex h-full min-h-0 w-[360px] shrink-0 flex-col overflow-hidden border-l border-line bg-surface">
       <div className="flex items-center border-b border-line">
         {TABS.map((entry) => (
           <button

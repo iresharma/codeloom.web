@@ -12,6 +12,7 @@ import {
 } from "react";
 
 import { api } from "./api";
+import { clearLocalArchive } from "./archive";
 import type { Project, Repo, Session } from "./types";
 import type { ProjectWithSessions } from "./workspace";
 
@@ -23,6 +24,7 @@ type WorkspaceValue = {
   busy: string | null;
   addRepo: (repo: Repo) => Promise<Project>;
   startSession: (projectId: string) => Promise<Session>;
+  removeSession: (sessionId: string) => Promise<void>;
   refresh: () => Promise<void>;
   patchSession: (session: Session) => void;
 };
@@ -76,6 +78,17 @@ export function WorkspaceProvider({
     void refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    const pending = projects.some((project) =>
+      project.sessions.some((session) => session.status === "provisioning"),
+    );
+    if (!pending) return;
+    const timer = window.setInterval(() => {
+      void refresh();
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [projects, refresh]);
+
   const addRepo = useCallback(
     async (repo: Repo) => {
       setBusy(repo.full_name);
@@ -121,6 +134,27 @@ export function WorkspaceProvider({
     [token],
   );
 
+  const removeSession = useCallback(
+    async (sessionId: string) => {
+      setError(null);
+      try {
+        await api.deleteSession(token, sessionId);
+        clearLocalArchive(sessionId);
+        setProjects((current) =>
+          current.map((project) => ({
+            ...project,
+            sessions: project.sessions.filter((row) => row.id !== sessionId),
+          })),
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "could not delete run";
+        setError(message);
+        throw err;
+      }
+    },
+    [token],
+  );
+
   const patchSession = useCallback((session: Session) => {
     setProjects((current) =>
       current.map((project) => {
@@ -145,10 +179,11 @@ export function WorkspaceProvider({
       busy,
       addRepo,
       startSession,
+      removeSession,
       refresh,
       patchSession,
     }),
-    [projects, repos, loading, error, busy, addRepo, startSession, refresh, patchSession],
+    [projects, repos, loading, error, busy, addRepo, startSession, removeSession, refresh, patchSession],
   );
 
   return createElement(WorkspaceContext.Provider, { value }, children);

@@ -218,21 +218,48 @@ textarea:focus-visible {
 }
 
 .diff-view {
-  min-width: 0;
+  width: max-content;
+  min-width: 100%;
 }
 
 .diff-view table {
-  width: 100%;
-  table-layout: fixed;
+  width: max-content !important;
+  min-width: 100%;
+  table-layout: auto !important;
   border-collapse: collapse;
 }
 
 .diff-view td {
-  overflow-wrap: anywhere;
+  overflow: visible !important;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: pre;
+}
+
+.diff-view [class*="-line-content"] {
+  overflow: visible !important;
+  width: auto !important;
+  max-width: none !important;
+}
+
+.diff-view [class*="-line-body"] {
+  flex: 0 0 auto !important;
+  min-width: max-content !important;
+  width: max-content !important;
+}
+
+.diff-view [class*="-content-text"] {
+  white-space: pre !important;
+  line-break: auto !important;
 }
 
 .diff-view pre {
   margin: 0;
+  width: max-content !important;
   background: transparent !important;
+  white-space: pre !important;
+  line-break: auto !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
 }
 

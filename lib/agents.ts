@@ -1,5 +1,5 @@
-import type { AgentRow, ChatItem, ChatTool, Stats } from "./types";
-import { toolHeadline } from "./chat";
+import { matchAgent, parseAgentReport, toolHeadline } from "./chat";
+import type { AgentRow, AgentRun, ChatItem, ChatTool, Stats } from "./types";
 
 export const ORCHESTRATOR_ID = "";
 export const ORCHESTRATOR_NODE = "orchestrator";
@@ -31,6 +31,73 @@ export function upsertAgent(current: AgentRow[], next: AgentRow): AgentRow[] {
   return exists
     ? current.map((row) => (row.id === next.id ? { ...row, ...next } : row))
     : [...current, next];
+}
+
+export function applyAgentRuns(agents: AgentRow[], runs?: AgentRun[]): AgentRow[] {
+  if (!runs?.length) return agents;
+  let next = agents;
+  for (const run of runs) {
+    const id = run.agent_id;
+    if (!id) continue;
+    const existing = matchAgent(next, id);
+    next = upsertAgent(next, {
+      id: existing?.id || id,
+      role: existing?.role ?? "child",
+      profile: existing?.profile || run.profile || "agent",
+      status: existing && isAgentActive(existing.status) ? existing.status : "finished",
+      parent_id: existing?.parent_id,
+      task: existing?.task,
+      branch: existing?.branch,
+      worktree: existing?.worktree,
+      run_status: existing?.run_status,
+      summary: existing?.summary,
+      started_at: existing?.started_at,
+      duration_ms: existing?.duration_ms,
+      cost: run.cost ?? existing?.cost,
+      prompt_tokens: run.prompt_tokens ?? existing?.prompt_tokens,
+      cached_tokens: run.cached_tokens ?? existing?.cached_tokens,
+      total_tokens: run.total_tokens ?? existing?.total_tokens,
+      requests: run.requests ?? existing?.requests,
+    });
+  }
+  return next;
+}
+
+export function hydrateAgents(agents: AgentRow[], stats: Stats | null, itemsByAgent: Record<string, ChatItem[]>): AgentRow[] {
+  let next = applyAgentRuns(agents, stats?.agent_runs);
+  for (const items of Object.values(itemsByAgent)) {
+    for (const item of items) {
+      if (item.kind === "message") next = applyAgentReport(next, item.text);
+    }
+  }
+  return next;
+}
+
+export function applyAgentReport(agents: AgentRow[], text: string): AgentRow[] {
+  const report = parseAgentReport(text);
+  if (!report) return agents;
+  const existing = matchAgent(agents, report.agentId);
+  const id = existing?.id || report.agentId;
+  if (!id) return agents;
+  return upsertAgent(agents, {
+    id,
+    role: existing?.role ?? "child",
+    profile: existing?.profile || report.profile || "agent",
+    status: existing && isAgentActive(existing.status) ? existing.status : "finished",
+    parent_id: existing?.parent_id,
+    task: existing?.task,
+    branch: existing?.branch,
+    worktree: existing?.worktree,
+    run_status: existing?.run_status || "ok",
+    summary: report.summary || existing?.summary,
+    started_at: existing?.started_at,
+    duration_ms: existing?.duration_ms,
+    cost: existing?.cost,
+    prompt_tokens: existing?.prompt_tokens,
+    cached_tokens: existing?.cached_tokens,
+    total_tokens: existing?.total_tokens,
+    requests: existing?.requests,
+  });
 }
 
 export function nodeIdForAgent(id: string): string {
@@ -83,6 +150,11 @@ export function agentStats(
   const files = [...new Set(tools.map(toolPath).filter((path): path is string => Boolean(path)))];
   const user = items.find((item) => item.kind === "message" && item.role === "user");
   const prompt = agent?.task?.trim() || (user && user.kind === "message" ? user.text : "");
+  const run = agent?.id
+    ? sessionStats?.agent_runs?.find(
+        (row) => row.agent_id === agent.id || row.agent_id.startsWith(agent.id) || agent.id.startsWith(row.agent_id),
+      )
+    : undefined;
   return {
     prompt,
     tools,
@@ -90,10 +162,10 @@ export function agentStats(
     toolCount: tools.length,
     runningTools: tools.filter((tool) => tool.ok === undefined).length,
     failedTools: tools.filter((tool) => tool.ok === false).length,
-    durationMs: tools.reduce((sum, tool) => sum + (tool.duration_ms ?? 0), 0),
-    tokens: isRoot ? sessionStats?.total_tokens : undefined,
-    cost: isRoot ? sessionStats?.cost : undefined,
-    turns: isRoot ? sessionStats?.turns : undefined,
+    durationMs: agent?.duration_ms ?? tools.reduce((sum, tool) => sum + (tool.duration_ms ?? 0), 0),
+    tokens: isRoot ? sessionStats?.total_tokens : (agent?.total_tokens ?? run?.total_tokens),
+    cost: isRoot ? sessionStats?.cost : (agent?.cost ?? run?.cost),
+    turns: isRoot ? sessionStats?.turns : (agent?.requests ?? run?.requests),
   };
 }
 

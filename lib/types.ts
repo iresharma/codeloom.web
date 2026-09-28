@@ -12,6 +12,7 @@ export type Repo = {
   default_branch: string;
   private: boolean;
   description: string | null;
+  language: string | null;
 };
 
 export type Project = {
@@ -20,6 +21,7 @@ export type Project = {
   owner: string;
   repo: string;
   default_branch: string;
+  runtime: "python" | "node" | "golang";
   created_at: string;
 };
 
@@ -31,6 +33,7 @@ export type Session = {
   branch: string;
   engine_session_id: string | null;
   error: string | null;
+  title: string | null;
   created_at: string;
   stopped_at: string | null;
 };
@@ -42,6 +45,16 @@ export type FileTreeNode = {
   children?: FileTreeNode[] | null;
 };
 
+export type AgentRun = {
+  agent_id: string;
+  profile: string;
+  cost?: number;
+  prompt_tokens?: number;
+  cached_tokens?: number;
+  total_tokens?: number;
+  requests?: number;
+};
+
 export type AgentRow = {
   id: string;
   role: string;
@@ -51,6 +64,16 @@ export type AgentRow = {
   parent_id?: string;
   task?: string;
   branch?: string;
+  worktree?: string;
+  run_status?: string;
+  summary?: string;
+  cost?: number;
+  prompt_tokens?: number;
+  cached_tokens?: number;
+  total_tokens?: number;
+  requests?: number;
+  duration_ms?: number;
+  started_at?: number;
 };
 
 export type GitState = {
@@ -61,6 +84,22 @@ export type GitState = {
   untracked?: string[];
 };
 
+export function mergeGit(git: GitState | null, editedPaths: string[]): GitState | null {
+  if (!git && editedPaths.length === 0) return null;
+  const staged = git?.staged ?? [];
+  const unstaged = git?.unstaged ?? [];
+  const untracked = git?.untracked ?? [];
+  const known = new Set([...staged, ...unstaged, ...untracked]);
+  const extra = editedPaths.filter((path) => path && !known.has(path));
+  return {
+    ...git,
+    staged,
+    unstaged: extra.length ? [...unstaged, ...extra] : unstaged,
+    untracked,
+    dirty: Boolean(staged.length || unstaged.length || untracked.length || extra.length),
+  };
+}
+
 export type Stats = {
   total_tokens?: number;
   prompt_tokens?: number;
@@ -69,6 +108,7 @@ export type Stats = {
   tool_calls?: number;
   turns?: number;
   requests?: number;
+  agent_runs?: AgentRun[];
 };
 
 export type PendingPrompt = {
@@ -98,6 +138,11 @@ export type ChatTool = {
 };
 
 export type ChatItem = ChatMessage | ChatTool;
+
+export type SessionArchive = {
+  stats: Stats | null;
+  items: ChatItem[];
+};
 
 export type EngineEvent = {
   type: string;
