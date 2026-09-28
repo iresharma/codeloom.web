@@ -263,6 +263,7 @@ export function SessionWorkspace() {
       !openFailed,
   );
   const usage = state.stats ?? archive?.stats ?? null;
+  const models = (usage?.models ?? []).filter((name) => name.trim());
 
   const gitLabel = state.git?.branch
     ? `${state.git.branch}${state.git.dirty ? "*" : ""}`
@@ -346,9 +347,14 @@ export function SessionWorkspace() {
                   disabled={!connected}
                   running={running}
                   prefill={prefill}
-                  onSend={(text) => {
+                  onSend={(text, model) => {
                     rememberTitle(text);
-                    send({ type: "SubmitUserMessage", text });
+                    const payload: { type: string; text: string; model?: string } = {
+                      type: "SubmitUserMessage",
+                      text,
+                    };
+                    if (model) payload.model = model;
+                    send(payload);
                   }}
                   onAbort={() =>
                     send({
@@ -397,6 +403,11 @@ export function SessionWorkspace() {
             {live ? (connected ? "live" : "connecting") : (session?.status ?? "…")}
           </span>
           {gitLabel ? <span className="truncate font-mono">{gitLabel}</span> : null}
+          {models.length ? (
+            <span className="min-w-0 truncate font-mono" title={models.join("\n")}>
+              {models.join(" · ")}
+            </span>
+          ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-3">
           {usage && (usage.total_tokens || usage.requests || usage.cost) ? (

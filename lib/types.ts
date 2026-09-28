@@ -109,6 +109,7 @@ export type Stats = {
   turns?: number;
   requests?: number;
   agent_runs?: AgentRun[];
+  models?: string[];
 };
 
 export type PendingPrompt = {
