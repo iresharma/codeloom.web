@@ -80,6 +80,16 @@ function SpawnResult({
   );
 }
 
+function screenshotSrc(item: ChatTool): string | null {
+  const image = item.image?.replace(/\s/g, "") ?? "";
+  if (!image || image.length > 900_000 || !/^[A-Za-z0-9+/=]+$/.test(image)) return null;
+  const mime =
+    item.image_mime === "image/png" || item.image_mime === "image/webp"
+      ? item.image_mime
+      : "image/jpeg";
+  return `data:${mime};base64,${image}`;
+}
+
 function ToolCall({
   item,
   agents,
@@ -94,6 +104,7 @@ function ToolCall({
   const spawn = isSpawnTool(item.name);
   const card = spawn ? spawnCard(item, agents, stats, items) : null;
   const diff = spawn ? null : toolDiff(item);
+  const shot = spawn || diff ? null : screenshotSrc(item);
   const [open, setOpen] = useState(Boolean(diff) || (!spawn && item.ok === false));
   const running = item.ok === undefined;
   const headline = toolHeadline(item);
@@ -126,6 +137,22 @@ function ToolCall({
         <span className="shrink-0 text-[12px] text-muted">{meta}</span>
         {hasBody ? <span className="text-[11px] text-muted">{open ? "▾" : "▸"}</span> : null}
       </button>
+      {shot ? (
+        <figure className="border-t border-line bg-canvas">
+          <a href={shot} target="_blank" rel="noreferrer" className="block">
+            <img
+              src={shot}
+              alt={item.preview?.trim() || "Page screenshot"}
+              className="max-h-[28rem] w-full object-contain object-top"
+            />
+          </a>
+          {item.preview ? (
+            <figcaption className="truncate px-2.5 py-1 font-mono text-[11px] text-muted">
+              {item.preview}
+            </figcaption>
+          ) : null}
+        </figure>
+      ) : null}
       {open && hasBody ? (
         <div className="border-t border-line">
           {diff ? (
@@ -146,7 +173,7 @@ function ToolCall({
                       {item.arguments_json}
                     </pre>
                   ) : null}
-                  {item.preview ? (
+                  {item.preview && !shot ? (
                     <pre className="max-h-40 overflow-auto whitespace-pre-wrap font-mono text-[11px] leading-4 text-fg/80">
                       {item.preview}
                     </pre>

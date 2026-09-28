@@ -75,6 +75,10 @@ export function humanToolName(name: string): string {
     list_dir: "List",
     webbrowse: "Browse",
     websearch: "Search web",
+    browseropen: "Open",
+    browserscreenshot: "Screenshot",
+    browserconsole: "Console",
+    browsernetwork: "Network",
     ask: "Ask",
     coder: "Coder",
     tester: "Tester",
@@ -220,7 +224,9 @@ export function toolHeadline(item: ChatTool): { title: string; detail: string } 
   const path = stringArg(args, ["path", "file", "filepath", "target"]);
   const command = stringArg(args, ["command", "cmd", "script"]);
   const query = stringArg(args, ["query", "pattern", "search", "q"]);
-  const detail = path || command || query || "";
+  const browser = item.name.trim().toLowerCase().startsWith("browser_");
+  const page = browser ? stringArg(args, ["url", "name"]) : null;
+  const detail = path || command || query || page || "";
   const short = detail.length > 72 ? `${detail.slice(0, 69)}…` : detail;
   return {
     title: short ? `${verb} ${fileName(short)}` : verb,

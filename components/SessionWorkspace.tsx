@@ -181,7 +181,7 @@ export function SessionWorkspace() {
   useEffect(() => {
     if (!connected || session?.id !== params.id) return;
     if (!conversation.length && !state.stats) return;
-    const next = packArchive(state.stats, conversation);
+    const next = packArchive(state.stats, conversation, { images: false });
     setArchive(next);
     writeLocalArchive(params.id, next);
   }, [connected, conversation, state.stats, session?.id, params.id]);

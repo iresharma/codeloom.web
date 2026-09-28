@@ -136,6 +136,8 @@ export type ChatTool = {
   preview?: string;
   ok?: boolean;
   duration_ms?: number;
+  image?: string;
+  image_mime?: string;
 };
 
 export type ChatItem = ChatMessage | ChatTool;

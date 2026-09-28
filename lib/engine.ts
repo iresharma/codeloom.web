@@ -236,6 +236,8 @@ export function reduceEngine(state: EngineState, event: EngineEvent): EngineStat
   if (type === "ToolCallFinished") {
     const callId = String(event.call_id ?? "");
     const preview = String(event.preview ?? "");
+    const image = typeof event.image === "string" && event.image ? event.image : "";
+    const imageMime = typeof event.image_mime === "string" ? event.image_mime : "";
     const items = itemsFor(state, agentId).map((item) => {
       if (item.kind === "tool" && item.call_id === callId) {
         return {
@@ -243,6 +245,7 @@ export function reduceEngine(state: EngineState, event: EngineEvent): EngineStat
           preview,
           ok: Boolean(event.ok),
           duration_ms: Number(event.duration_ms ?? 0),
+          ...(image ? { image, image_mime: imageMime || "image/jpeg" } : {}),
         };
       }
       return item;
