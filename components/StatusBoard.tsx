@@ -14,6 +14,8 @@ import {
   type ProjectWithSessions,
 } from "@/lib/workspace";
 
+import { EmptyState } from "./EmptyState";
+import { GitHubAuthPrompt } from "./GitHubAuthPrompt";
 import { StatusDot } from "./StatusDot";
 
 function SessionCard({
@@ -62,11 +64,12 @@ function SessionCard({
 }
 
 export function StatusBoard({ projectId }: { projectId?: string }) {
-  const { projects, loading } = useWorkspace();
+  const { projects, loading, error, githubAuthExpired } = useWorkspace();
   const project = projectId ? projects.find((row) => row.id === projectId) : undefined;
   const scoped: ProjectWithSessions[] = projectId ? (project ? [project] : []) : projects;
   const sessions = flattenSessions(scoped);
   const missingProject = Boolean(projectId && !loading && !project);
+  const showAuthPrompt = githubAuthExpired;
   const repoBySession = new Map(
     scoped.flatMap((row) => row.sessions.map((session) => [session.id, row.full_name] as const)),
   );
@@ -84,40 +87,53 @@ export function StatusBoard({ projectId }: { projectId?: string }) {
 
       {loading ? (
         <p className="px-4 py-8 text-muted">Loading sessions…</p>
+      ) : showAuthPrompt && projects.length === 0 ? (
+        <GitHubAuthPrompt fill />
+      ) : error && projects.length === 0 ? (
+        <div className="flex min-h-0 flex-1 items-center justify-center px-6">
+          <div className="max-w-md">
+            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-danger">unavailable</p>
+            <h2 className="mt-3 font-display text-4xl leading-none tracking-tight">
+              Projects did not load
+            </h2>
+            <p className="mt-4 text-[14px] leading-6 text-muted">{error}</p>
+          </div>
+        </div>
       ) : missingProject ? (
         <p className="px-4 py-8 text-muted">This project was not found.</p>
-      ) : sessions.length === 0 ? (
-        <p className="px-4 py-8 text-muted">
-          {project
-            ? "No sessions in this project yet. Start an agent from the sidebar."
-            : "Start an agent from the sidebar, or add a repository first."}
-        </p>
       ) : (
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-px overflow-auto bg-line md:grid-cols-3">
-          {BOARD_COLUMNS.map((column) => {
-            const rows = sessionsInColumn(sessions, column.id);
-            return (
-              <section key={column.id} className="flex min-h-0 flex-col bg-canvas p-4">
-                <h2 className="flex items-center justify-between text-[12px] text-muted">
-                  <span>{column.label}</span>
-                  <span>{rows.length}</span>
-                </h2>
-                <ul className="mt-3 space-y-2">
-                  {rows.length === 0 ? (
-                    <li className="text-[12px] text-muted">None</li>
-                  ) : (
-                    rows.map((session) => (
-                      <SessionCard
-                        key={session.id}
-                        session={session}
-                        repo={repoBySession.get(session.id) ?? session.repo}
-                      />
-                    ))
-                  )}
-                </ul>
-              </section>
-            );
-          })}
+        <div className="flex min-h-0 flex-1 flex-col">
+          {showAuthPrompt ? <GitHubAuthPrompt /> : null}
+          {sessions.length === 0 ? (
+            <EmptyState project={project} />
+          ) : (
+            <div className="grid min-h-0 flex-1 grid-cols-1 gap-px overflow-auto bg-line md:grid-cols-3">
+              {BOARD_COLUMNS.map((column) => {
+                const rows = sessionsInColumn(sessions, column.id);
+                return (
+                  <section key={column.id} className="flex min-h-0 flex-col bg-canvas p-4">
+                    <h2 className="flex items-center justify-between text-[12px] text-muted">
+                      <span>{column.label}</span>
+                      <span>{rows.length}</span>
+                    </h2>
+                    <ul className="mt-3 space-y-2">
+                      {rows.length === 0 ? (
+                        <li className="text-[12px] text-muted">None</li>
+                      ) : (
+                        rows.map((session) => (
+                          <SessionCard
+                            key={session.id}
+                            session={session}
+                            repo={repoBySession.get(session.id) ?? session.repo}
+                          />
+                        ))
+                      )}
+                    </ul>
+                  </section>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>

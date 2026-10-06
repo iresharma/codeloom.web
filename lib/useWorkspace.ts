@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { api } from "./api";
+import { api, isGitHubAuthExpired } from "./api";
 import { clearLocalArchive } from "./archive";
 import type { Project, Repo, Session } from "./types";
 import type { ProjectWithSessions } from "./workspace";
@@ -21,10 +21,12 @@ type WorkspaceValue = {
   repos: Repo[];
   loading: boolean;
   error: string | null;
+  githubAuthExpired: boolean;
   busy: string | null;
   addRepo: (repo: Repo) => Promise<Project>;
   startSession: (projectId: string) => Promise<Session>;
   removeSession: (sessionId: string) => Promise<void>;
+  removeProject: (projectId: string) => Promise<void>;
   refresh: () => Promise<void>;
   patchSession: (session: Session) => void;
 };
@@ -55,18 +57,25 @@ export function WorkspaceProvider({
   const [repos, setRepos] = useState<Repo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [githubAuthExpired, setGithubAuthExpired] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
-      const [nextProjects, nextRepos] = await Promise.all([
-        loadProjects(token),
-        api.repos(token).catch(() => [] as Repo[]),
-      ]);
+      const nextProjects = await loadProjects(token);
+      let nextRepos: Repo[] = [];
+      let expired = false;
+      try {
+        nextRepos = await api.repos(token);
+      } catch (err) {
+        expired = isGitHubAuthExpired(err);
+      }
       setProjects(nextProjects);
       setRepos(nextRepos);
+      setGithubAuthExpired(expired);
       setError(null);
     } catch (err) {
+      setGithubAuthExpired(isGitHubAuthExpired(err));
       setError(err instanceof Error ? err.message : "could not load workspace");
     } finally {
       setLoading(false);
@@ -99,8 +108,13 @@ export function WorkspaceProvider({
         setProjects((current) => [next, ...current]);
         return project;
       } catch (err) {
-        const message = err instanceof Error ? err.message : "could not add project";
-        setError(message);
+        if (isGitHubAuthExpired(err)) {
+          setGithubAuthExpired(true);
+          setError(null);
+        } else {
+          const message = err instanceof Error ? err.message : "could not add project";
+          setError(message);
+        }
         throw err;
       } finally {
         setBusy(null);
@@ -124,11 +138,31 @@ export function WorkspaceProvider({
         );
         return session;
       } catch (err) {
-        const message = err instanceof Error ? err.message : "could not start session";
-        setError(message);
+        if (isGitHubAuthExpired(err)) {
+          setGithubAuthExpired(true);
+          setError(null);
+        } else {
+          const message = err instanceof Error ? err.message : "could not start session";
+          setError(message);
+        }
         throw err;
       } finally {
         setBusy(null);
+      }
+    },
+    [token],
+  );
+
+  const removeProject = useCallback(
+    async (projectId: string) => {
+      setError(null);
+      try {
+        await api.deleteProject(token, projectId);
+        setProjects((current) => current.filter((project) => project.id !== projectId));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "could not remove project";
+        setError(message);
+        throw err;
       }
     },
     [token],
@@ -176,14 +210,29 @@ export function WorkspaceProvider({
       repos,
       loading,
       error,
+      githubAuthExpired,
       busy,
       addRepo,
       startSession,
       removeSession,
+      removeProject,
       refresh,
       patchSession,
     }),
-    [projects, repos, loading, error, busy, addRepo, startSession, removeSession, refresh, patchSession],
+    [
+      projects,
+      repos,
+      loading,
+      error,
+      githubAuthExpired,
+      busy,
+      addRepo,
+      startSession,
+      removeSession,
+      removeProject,
+      refresh,
+      patchSession,
+    ],
   );
 
   return createElement(WorkspaceContext.Provider, { value }, children);

@@ -3,6 +3,8 @@ export type User = {
   login: string;
   name: string | null;
   avatar_url: string | null;
+  github_refreshable?: boolean;
+  github_access_expires_at?: string | null;
 };
 
 export type Repo = {
@@ -13,6 +15,36 @@ export type Repo = {
   private: boolean;
   description: string | null;
   language: string | null;
+};
+
+export type WorkItem = {
+  number: number;
+  title: string;
+  html_url: string;
+  user: string;
+  updated_at: string | null;
+};
+
+export type Contributor = {
+  login: string;
+  avatar_url: string | null;
+  contributions: number;
+};
+
+export type ProjectOverview = {
+  full_name: string;
+  description: string | null;
+  language: string | null;
+  default_branch: string;
+  private: boolean;
+  html_url: string;
+  stars: number;
+  forks: number;
+  open_issues: number;
+  pushed_at: string | null;
+  issues: WorkItem[];
+  pulls: WorkItem[];
+  contributors: Contributor[];
 };
 
 export type Project = {
@@ -141,6 +173,31 @@ export type ChatTool = {
 };
 
 export type ChatItem = ChatMessage | ChatTool;
+
+export type PullFile = {
+  filename: string;
+  status: string;
+  additions: number;
+  deletions: number;
+  patch: string;
+};
+
+export type PullPreview = {
+  number: number;
+  title: string;
+  body: string;
+  state: string;
+  draft: boolean;
+  html_url: string;
+  user: string;
+  base: string;
+  head: string;
+  additions: number;
+  deletions: number;
+  changed_files: number;
+  commits: number;
+  files: PullFile[];
+};
 
 export type SessionArchive = {
   stats: Stats | null;

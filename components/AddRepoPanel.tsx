@@ -5,6 +5,8 @@ import { useMemo, useState } from "react";
 import { useWorkspace } from "@/lib/useWorkspace";
 import type { Repo } from "@/lib/types";
 
+import { GitHubAuthPrompt } from "./GitHubAuthPrompt";
+
 export function AddRepoPanel({
   open,
   onClose,
@@ -14,7 +16,7 @@ export function AddRepoPanel({
   onClose: () => void;
   onAdded?: (projectId: string) => void;
 }) {
-  const { repos, projects, addRepo, busy } = useWorkspace();
+  const { repos, projects, addRepo, busy, githubAuthExpired } = useWorkspace();
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -60,7 +62,11 @@ export function AddRepoPanel({
         />
       </div>
       <ul className="min-h-0 flex-1 overflow-auto px-2 pb-2">
-        {filtered.length === 0 ? (
+        {githubAuthExpired ? (
+          <li className="px-1 py-2">
+            <GitHubAuthPrompt embedded />
+          </li>
+        ) : filtered.length === 0 ? (
           <li className="px-1 py-3 text-[12px] text-muted">No matching repositories.</li>
         ) : (
           filtered.map((repo) => (

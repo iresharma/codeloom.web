@@ -96,7 +96,7 @@ export function Composer({
   }
 
   return (
-    <form onSubmit={submit} className="flex items-end gap-2">
+    <form onSubmit={submit} className="border border-line bg-canvas">
       <label className="sr-only" htmlFor="composer">
         Message
       </label>
@@ -109,9 +109,9 @@ export function Composer({
         rows={2}
         ref={field}
         placeholder={running ? "Agent is working…" : "Ask the orchestrator…"}
-        className="min-h-[2.75rem] flex-1 resize-none border border-line bg-canvas px-3 py-2 text-[13px] text-fg outline-none placeholder:text-muted focus:border-muted disabled:opacity-50"
+        className="min-h-[2.75rem] w-full resize-none bg-transparent px-3 py-2 text-[13px] text-fg outline-none placeholder:text-muted disabled:opacity-50"
       />
-      <div className="flex w-[12.5rem] flex-col gap-1.5">
+      <div className="flex items-center gap-2 border-t border-line px-2 py-1.5">
         <ModelPicker
           id="composer-model"
           value={preset}
@@ -131,26 +131,28 @@ export function Composer({
               persist(preset, next);
             }}
             placeholder="openrouter id"
-            className="w-full border border-line bg-canvas px-2 py-1 text-[11px] text-fg outline-none placeholder:text-muted focus:border-muted disabled:opacity-40"
+            className="min-w-0 flex-1 border border-line bg-canvas px-2 py-1 text-[11px] text-fg outline-none placeholder:text-muted focus:border-muted disabled:opacity-40"
           />
-        ) : null}
-        <button
-          type="submit"
-          disabled={disabled || !text.trim()}
-          className="border border-line px-3 py-1.5 text-[12px] text-fg hover:bg-surface disabled:opacity-40"
-        >
-          Send
-        </button>
+        ) : (
+          <span className="min-w-0 flex-1" />
+        )}
         {running ? (
           <button
             type="button"
             onClick={onAbort}
             disabled={disabled}
-            className="border border-line px-3 py-1.5 text-[12px] text-muted hover:text-fg disabled:opacity-40"
+            className="shrink-0 border border-line px-3 py-1.5 text-[12px] text-muted hover:text-fg disabled:opacity-40"
           >
             Stop
           </button>
         ) : null}
+        <button
+          type="submit"
+          disabled={disabled || !text.trim()}
+          className="shrink-0 border border-line px-3 py-1.5 text-[12px] text-fg hover:bg-surface disabled:opacity-40"
+        >
+          Send
+        </button>
       </div>
     </form>
   );

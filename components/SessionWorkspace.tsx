@@ -15,6 +15,8 @@ import { dismissPrompt, itemsForAgent, type EngineState } from "@/lib/engine";
 import { clipTitle } from "@/lib/workspace";
 
 import { Composer } from "./Composer";
+import { PullPreviews } from "./PullPreview";
+import { SandboxProvision } from "./SandboxProvision";
 import { SessionFinale } from "./SessionFinale";
 import { FilePane } from "./FilePane";
 import { InspectPanel, type InspectTab } from "./InspectPanel";
@@ -287,9 +289,7 @@ export function SessionWorkspace() {
 
         {error ? <p className="px-4 py-3 text-[13px] text-danger">{error}</p> : null}
 
-        {session?.status === "provisioning" ? (
-          <p className="px-4 py-10 text-[13px] text-muted">Provisioning sandbox…</p>
-        ) : null}
+        {session?.status === "provisioning" ? <SandboxProvision /> : null}
 
         {session?.status === "error" || session?.status === "stopped" ? (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -301,6 +301,14 @@ export function SessionWorkspace() {
             />
             {reading && archive ? (
               <div className="min-h-0 flex-1 overflow-auto px-4 py-4">
+                <div className="mb-4">
+                  <PullPreviews
+                    projectId={session.project_id}
+                    repo={session.repo}
+                    urls={state.pullUrls}
+                    items={archive.items}
+                  />
+                </div>
                 <Transcript
                   items={archive.items}
                   agents={[]}
@@ -328,7 +336,13 @@ export function SessionWorkspace() {
                   onSuggest={(text) => setPrefill({ id: Date.now(), text })}
                 />
               </div>
-              <div className="shrink-0 space-y-3 overflow-hidden border-t border-line p-3">
+              <div className="max-h-[46%] shrink-0 space-y-3 overflow-auto border-t border-line p-3">
+                <PullPreviews
+                  projectId={session.project_id}
+                  repo={session.repo}
+                  urls={state.pullUrls}
+                  items={items}
+                />
                 {state.error ? <p className="text-[12px] text-danger">{state.error}</p> : null}
                 {!auto && state.pendingPrompt ? (
                   <PromptCard

@@ -34,6 +34,7 @@ export type EngineState = {
   pendingPrompt: PendingPrompt | null;
   answeredPromptIds: string[];
   git: GitState | null;
+  pullUrls: string[];
   editedPaths: string[];
   stats: Stats | null;
   error: string | null;
@@ -48,6 +49,7 @@ export const initialEngineState: EngineState = {
   pendingPrompt: null,
   answeredPromptIds: [],
   git: null,
+  pullUrls: [],
   editedPaths: [],
   stats: null,
   error: null,
@@ -85,6 +87,27 @@ function num(value: unknown, fallback?: number): number | undefined {
 function int(value: unknown, fallback?: number): number | undefined {
   const next = num(value, fallback);
   return next == null ? undefined : Math.round(next);
+}
+
+const PULL_URL = /https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/pull\/\d+/g;
+
+export function pullUrlsInText(text: string): string[] {
+  return text.match(PULL_URL) ?? [];
+}
+
+export function pullUrlsInItems(items: ChatItem[]): string[] {
+  const found = items.flatMap((item) =>
+    item.kind === "message"
+      ? pullUrlsInText(item.text)
+      : pullUrlsInText(`${item.preview ?? ""}\n${item.arguments_json}`),
+  );
+  return [...new Set(found)];
+}
+
+function withPullUrls(state: EngineState, text: string): EngineState {
+  const next = pullUrlsInText(text).filter((url) => !state.pullUrls.includes(url));
+  if (next.length === 0) return state;
+  return { ...state, pullUrls: [...state.pullUrls, ...next] };
 }
 
 function itemsFor(state: EngineState, agentId: string): ChatItem[] {
@@ -209,7 +232,7 @@ export function reduceEngine(state: EngineState, event: EngineEvent): EngineStat
         true,
       ),
     );
-    return { ...next, agents: applyAgentReport(next.agents, text) };
+    return withPullUrls({ ...next, agents: applyAgentReport(next.agents, text) }, text);
   }
 
   if (type === "ChatHistoryComplete") {
@@ -250,7 +273,7 @@ export function reduceEngine(state: EngineState, event: EngineEvent): EngineStat
       }
       return item;
     });
-    return setItems(state, agentId, items);
+    return withPullUrls(setItems(state, agentId, items), preview);
   }
 
   if (type === "AgentsUpdated") {
@@ -343,6 +366,10 @@ export function reduceEngine(state: EngineState, event: EngineEvent): EngineStat
 
   if (type === "GitStateUpdated") {
     return { ...state, git: (event.git as GitState) ?? state.git };
+  }
+
+  if (type === "WorktreeSettled") {
+    return withPullUrls(state, String(event.pr_url ?? ""));
   }
 
   if (type === "StatsUpdated") {

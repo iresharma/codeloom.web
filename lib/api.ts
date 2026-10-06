@@ -1,13 +1,40 @@
 import { API_URL } from "./config";
-import type { Project, Repo, Session, SessionArchive, User } from "./types";
+import type {
+  Project,
+  ProjectOverview,
+  PullPreview,
+  Repo,
+  Session,
+  SessionArchive,
+  User,
+} from "./types";
 
 export class ApiError extends Error {
   status: number;
+  code: string | null;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, code: string | null = null) {
     super(message);
     this.status = status;
+    this.code = code;
   }
+}
+
+function readError(data: unknown, statusText: string): { message: string; code: string | null } {
+  const detail =
+    data && typeof data === "object" && "detail" in data
+      ? (data as { detail: unknown }).detail
+      : null;
+  if (typeof detail === "string") {
+    return { message: detail, code: null };
+  }
+  if (detail && typeof detail === "object") {
+    const body = detail as { message?: unknown; code?: unknown };
+    const message = typeof body.message === "string" ? body.message : statusText;
+    const code = typeof body.code === "string" ? body.code : null;
+    return { message, code };
+  }
+  return { message: statusText, code: null };
 }
 
 async function request<T>(path: string, token: string, init: RequestInit = {}): Promise<T> {
@@ -23,22 +50,32 @@ async function request<T>(path: string, token: string, init: RequestInit = {}): 
   const text = await response.text();
   const data = text ? JSON.parse(text) : null;
   if (!response.ok) {
-    const detail = typeof data?.detail === "string" ? data.detail : response.statusText;
-    throw new ApiError(response.status, detail);
+    const { message, code } = readError(data, response.statusText);
+    throw new ApiError(response.status, message, code);
   }
   return data as T;
+}
+
+export function isGitHubAuthExpired(error: unknown): boolean {
+  return error instanceof ApiError && error.code === "github_auth_expired";
 }
 
 export const api = {
   me: (token: string) => request<User>("/me", token),
   repos: (token: string) => request<Repo[]>("/github/repos?per_page=100", token),
   projects: (token: string) => request<Project[]>("/projects", token),
+  deleteProject: (token: string, id: string) =>
+    request<void>(`/projects/${id}`, token, { method: "DELETE" }),
   createProject: (token: string, full_name: string, default_branch?: string) =>
     request<Project>("/projects", token, {
       method: "POST",
       body: JSON.stringify({ full_name, default_branch }),
     }),
   project: (token: string, id: string) => request<Project>(`/projects/${id}`, token),
+  projectOverview: (token: string, id: string) =>
+    request<ProjectOverview>(`/projects/${id}/overview`, token),
+  pullPreview: (token: string, projectId: string, number: number) =>
+    request<PullPreview>(`/projects/${projectId}/pulls/${number}`, token),
   sessions: (token: string, projectId: string) =>
     request<Session[]>(`/projects/${projectId}/sessions`, token),
   createSession: (token: string, projectId: string) =>

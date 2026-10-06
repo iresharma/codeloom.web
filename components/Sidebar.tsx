@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
+import { clearToken } from "@/lib/auth";
 import { useWorkspace } from "@/lib/useWorkspace";
 import type { Session, User } from "@/lib/types";
 import {
@@ -21,7 +22,8 @@ import { AddRepoPanel } from "./AddRepoPanel";
 export function Sidebar({ user }: { user: User }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { projects, startSession, removeSession, busy, error, loading } = useWorkspace();
+  const { projects, startSession, removeSession, removeProject, busy, error, loading } =
+    useWorkspace();
   const [addOpen, setAddOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState("");
@@ -67,6 +69,24 @@ export function Sidebar({ user }: { user: User }) {
       // surfaced on the workspace error line
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  function signOut() {
+    clearToken();
+    router.replace("/");
+  }
+
+  async function removeRepo(project: ProjectWithSessions) {
+    const ok = window.confirm(`Remove ${project.full_name}? Live agents in it will stop.`);
+    if (!ok) return;
+    try {
+      await removeProject(project.id);
+      if (activeProjectId === project.id || selectedProjectId === project.id) {
+        router.push("/projects");
+      }
+    } catch {
+      // surfaced on the workspace error line
     }
   }
 
@@ -132,6 +152,7 @@ export function Sidebar({ user }: { user: User }) {
               activeSessionId={activeSessionId}
               deletingId={deletingId}
               onDelete={(session) => void removeRun(session)}
+              onRemove={() => void removeRepo(project)}
               onToggle={() =>
                 setCollapsed((current) => ({ ...current, [project.id]: !current[project.id] }))
               }
@@ -149,7 +170,12 @@ export function Sidebar({ user }: { user: User }) {
         >
           Add repository
         </button>
-        <div className="mt-1 truncate text-[12px] text-muted">{user.login}</div>
+        <div className="mt-1 flex items-center justify-between gap-2">
+          <span className="truncate text-[12px] text-muted">{user.login}</span>
+          <button type="button" onClick={signOut} className="shrink-0 text-[12px] text-muted hover:text-fg">
+            Sign out
+          </button>
+        </div>
       </div>
 
       <AddRepoPanel
@@ -169,6 +195,7 @@ function RepoGroup({
   activeSessionId,
   deletingId,
   onDelete,
+  onRemove,
   onToggle,
 }: {
   project: ProjectWithSessions;
@@ -178,6 +205,7 @@ function RepoGroup({
   activeSessionId: string | null;
   deletingId: string | null;
   onDelete: (session: Session) => void;
+  onRemove: () => void;
   onToggle: () => void;
 }) {
   return (
@@ -200,6 +228,13 @@ function RepoGroup({
         >
           {project.full_name}
         </Link>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="px-1 text-[11px] text-muted hover:text-danger"
+        >
+          Remove
+        </button>
       </div>
       {collapsed ? null : sessions.length === 0 ? (
         <p className="ml-3 border-l border-line px-2 py-1 text-[12px] text-muted">No sessions</p>
