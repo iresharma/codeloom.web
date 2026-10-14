@@ -59,6 +59,7 @@ export function SessionWorkspace() {
   const [error, setError] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
   const [tab, setTab] = useState<InspectTab>("agents");
+  const seenPullCount = useRef(0);
   const [requestedPath, setRequestedPath] = useState<string | null>(null);
   const [auto, setAuto] = useState(false);
   const [prefill, setPrefill] = useState<{ id: number; text: string } | null>(null);
@@ -112,6 +113,14 @@ export function SessionWorkspace() {
   const savedArchive = useRef("");
   const sessionRef = useRef(session);
   sessionRef.current = session;
+
+  useEffect(() => {
+    if (state.pullUrls.length > seenPullCount.current) {
+      setPanelOpen(true);
+      setTab("pulls");
+    }
+    seenPullCount.current = state.pullUrls.length;
+  }, [state.pullUrls]);
 
   useEffect(() => {
     titleSent.current = null;
@@ -336,14 +345,12 @@ export function SessionWorkspace() {
                   onSuggest={(text) => setPrefill({ id: Date.now(), text })}
                 />
               </div>
-              <div className="max-h-[46%] shrink-0 space-y-3 overflow-auto border-t border-line p-3">
-                <PullPreviews
-                  projectId={session.project_id}
-                  repo={session.repo}
-                  urls={state.pullUrls}
-                  items={items}
-                />
-                {state.error ? <p className="text-[12px] text-danger">{state.error}</p> : null}
+              {state.error ? (
+                <div className="shrink-0 border-t border-line p-3">
+                  <p className="text-[12px] text-danger">{state.error}</p>
+                </div>
+              ) : null}
+              <div className="shrink-0 space-y-3 border-t border-line p-3">
                 {!auto && state.pendingPrompt ? (
                   <PromptCard
                     prompt={state.pendingPrompt}
@@ -363,14 +370,21 @@ export function SessionWorkspace() {
                   disabled={!connected}
                   running={running}
                   prefill={prefill}
-                  onSend={(text, model) => {
+                  modelCapabilities={state.modelCapabilities}
+                  onSend={(text, model, reasoningEffort) => {
                     rememberTitle(text);
                     if (state.selectedAgentId) selectAgent("");
-                    const payload: { type: string; text: string; model?: string } = {
+                    const payload: {
+                      type: string;
+                      text: string;
+                      model?: string;
+                      reasoning_effort?: string;
+                    } = {
                       type: "SubmitUserMessage",
                       text,
                     };
                     if (model) payload.model = model;
+                    if (reasoningEffort) payload.reasoning_effort = reasoningEffort;
                     send(payload);
                   }}
                   onAbort={() =>
@@ -411,6 +425,10 @@ export function SessionWorkspace() {
           fileTree={state.fileTree}
           openFilePath={viewedFile?.path ?? null}
           onOpenFile={requestFile}
+          projectId={session.project_id}
+          repo={session.repo}
+          pullUrls={state.pullUrls}
+          rootItems={conversation}
         />
       ) : null}
       </div>

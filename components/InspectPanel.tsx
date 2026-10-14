@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { isAgentActive } from "@/lib/agents";
-import { itemsForAgent } from "@/lib/engine";
+import { itemsForAgent, pullUrlsInItems, pullUrlsInText } from "@/lib/engine";
 import { fileDir, fileName } from "@/lib/files";
 import type { AgentRow, ChatItem, FileTreeNode, GitState, Stats } from "@/lib/types";
 
@@ -11,13 +11,15 @@ import { AgentDetail } from "./AgentDetail";
 import { AgentGraph } from "./AgentGraph";
 import { FileIcon } from "./FileIcons";
 import { FileTree } from "./FileTree";
+import { PullPreviews, pullNumbers } from "./PullPreview";
 
-type Tab = "agents" | "changes" | "files";
+type Tab = "agents" | "changes" | "files" | "pulls";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "agents", label: "Agents" },
   { id: "changes", label: "Changes" },
   { id: "files", label: "Files" },
+  { id: "pulls", label: "Pulls" },
 ];
 
 function ChangeGroup({
@@ -73,6 +75,10 @@ export function InspectPanel({
   fileTree,
   openFilePath,
   onOpenFile,
+  projectId,
+  repo,
+  pullUrls,
+  rootItems,
 }: {
   collapsed: boolean;
   onToggle: () => void;
@@ -87,6 +93,10 @@ export function InspectPanel({
   fileTree: FileTreeNode[];
   openFilePath: string | null;
   onOpenFile: (path: string) => void;
+  projectId: string;
+  repo: string;
+  pullUrls: string[];
+  rootItems: ChatItem[];
 }) {
   const [includeFinished, setIncludeFinished] = useState(false);
   const finishedCount = agents.filter((agent) => agent.id && !isAgentActive(agent.status)).length;
@@ -94,6 +104,11 @@ export function InspectPanel({
     (git?.staged?.length ?? 0) + (git?.unstaged?.length ?? 0) + (git?.untracked?.length ?? 0);
   const selected = selectedAgentId ? agents.find((row) => row.id === selectedAgentId) ?? null : null;
   const items = itemsForAgent(itemsByAgent, selectedAgentId);
+  const pullCount = pullNumbers(repo, [
+    ...pullUrls,
+    ...pullUrlsInItems(rootItems),
+    ...pullUrls.flatMap(pullUrlsInText),
+  ]).length;
 
   if (collapsed) {
     return (
@@ -103,7 +118,7 @@ export function InspectPanel({
           onClick={onToggle}
           className="h-full px-2 text-[11px] text-muted [writing-mode:vertical-rl] hover:text-fg"
         >
-          Agents · Changes · Files
+          Agents · Changes · Files · Pulls
         </button>
       </aside>
     );
@@ -123,6 +138,7 @@ export function InspectPanel({
           >
             {entry.label}
             {entry.id === "changes" && changeCount ? ` ${changeCount}` : ""}
+            {entry.id === "pulls" && pullCount ? ` ${pullCount}` : ""}
           </button>
         ))}
         <button
@@ -188,6 +204,16 @@ export function InspectPanel({
       {tab === "files" ? (
         <div className="flex min-h-0 flex-1 flex-col pt-2">
           <FileTree tree={fileTree} selected={openFilePath} onOpen={onOpenFile} />
+        </div>
+      ) : null}
+
+      {tab === "pulls" ? (
+        <div className="min-h-0 flex-1 overflow-auto p-3">
+          {pullCount === 0 ? (
+            <p className="text-[12px] text-muted">No pull requests yet.</p>
+          ) : (
+            <PullPreviews projectId={projectId} repo={repo} urls={pullUrls} items={rootItems} />
+          )}
         </div>
       ) : null}
     </aside>

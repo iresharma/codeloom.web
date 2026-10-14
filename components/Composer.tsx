@@ -3,10 +3,14 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import { CUSTOM_MODEL, isKnownPreset } from "@/lib/models";
+import { effortOptionsFor } from "@/lib/reasoningEffort";
+import type { ModelCapability } from "@/lib/types";
 
+import { EffortPicker } from "./EffortPicker";
 import { ModelPicker } from "./ModelPicker";
 
 const STORAGE_KEY = "codeloom.model";
+const EFFORT_STORAGE_KEY = "codeloom.reasoning_effort";
 
 type StoredModel = { preset: string; custom: string };
 
@@ -46,29 +50,64 @@ function resolveModel(preset: string, custom: string): string | undefined {
   return preset;
 }
 
+function readStoredEffort(): string {
+  try {
+    return window.localStorage.getItem(EFFORT_STORAGE_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function writeStoredEffort(value: string) {
+  try {
+    if (value) window.localStorage.setItem(EFFORT_STORAGE_KEY, value);
+    else window.localStorage.removeItem(EFFORT_STORAGE_KEY);
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
 export function Composer({
   disabled,
   running,
   prefill,
+  modelCapabilities,
   onSend,
   onAbort,
 }: {
   disabled: boolean;
   running: boolean;
   prefill?: { id: number; text: string } | null;
-  onSend: (text: string, model?: string) => void;
+  modelCapabilities: Record<string, ModelCapability>;
+  onSend: (text: string, model?: string, reasoningEffort?: string) => void;
   onAbort: () => void;
 }) {
   const [text, setText] = useState("");
   const [preset, setPreset] = useState("");
   const [custom, setCustom] = useState("");
+  const [effort, setEffort] = useState("");
   const field = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const stored = readStored();
     setPreset(stored.preset);
     setCustom(stored.custom);
+    setEffort(readStoredEffort());
   }, []);
+
+  const resolvedModel = resolveModel(preset, custom);
+  const capability = resolvedModel ? modelCapabilities[resolvedModel] : undefined;
+  const effortOptions = effortOptionsFor(capability);
+
+  useEffect(() => {
+    // A model that no longer offers reasoning (or doesn't allow the
+    // previously-picked level) drops the stale selection rather than
+    // silently sending an effort the model rejects.
+    if (effort && !effortOptions.includes(effort)) {
+      setEffort("");
+      writeStoredEffort("");
+    }
+  }, [effort, effortOptions]);
 
   useEffect(() => {
     if (!prefill) return;
@@ -84,7 +123,7 @@ export function Composer({
     event?.preventDefault();
     const value = text.trim();
     if (!value || disabled) return;
-    onSend(value, resolveModel(preset, custom));
+    onSend(value, resolvedModel, effort || undefined);
     setText("");
   }
 
@@ -136,6 +175,17 @@ export function Composer({
         ) : (
           <span className="min-w-0 flex-1" />
         )}
+        <EffortPicker
+          id="composer-effort"
+          value={effort}
+          options={effortOptions}
+          mandatory={capability?.mandatory}
+          disabled={disabled}
+          onChange={(next) => {
+            setEffort(next);
+            writeStoredEffort(next);
+          }}
+        />
         {running ? (
           <button
             type="button"

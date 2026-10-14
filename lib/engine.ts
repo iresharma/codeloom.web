@@ -7,6 +7,7 @@ import type {
   EngineEvent,
   FileTreeNode,
   GitState,
+  ModelCapability,
   PendingPrompt,
   Stats,
 } from "./types";
@@ -38,6 +39,7 @@ export type EngineState = {
   editedPaths: string[];
   stats: Stats | null;
   error: string | null;
+  modelCapabilities: Record<string, ModelCapability>;
 };
 
 export const initialEngineState: EngineState = {
@@ -53,7 +55,32 @@ export const initialEngineState: EngineState = {
   editedPaths: [],
   stats: null,
   error: null,
+  modelCapabilities: {},
 };
+
+function modelCapabilitiesFrom(raw: unknown): Record<string, ModelCapability> | null {
+  if (!Array.isArray(raw)) return null;
+  const byId: Record<string, ModelCapability> = {};
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    const id = String(row.id ?? "");
+    if (!id) continue;
+    byId[id] = {
+      id,
+      name: typeof row.name === "string" ? row.name : undefined,
+      supports_reasoning: Boolean(row.supports_reasoning),
+      mandatory: Boolean(row.mandatory),
+      default_effort: typeof row.default_effort === "string" ? row.default_effort : null,
+      default_enabled: typeof row.default_enabled === "boolean" ? row.default_enabled : null,
+      supported_efforts: Array.isArray(row.supported_efforts)
+        ? (row.supported_efforts as string[])
+        : null,
+      supports_max_tokens: Boolean(row.supports_max_tokens),
+    };
+  }
+  return byId;
+}
 
 function promptKey(prompt: Pick<PendingPrompt, "prompt_id" | "question">): string {
   return prompt.prompt_id || prompt.question;
@@ -172,6 +199,7 @@ export function reduceEngine(state: EngineState, event: EngineEvent): EngineStat
       ? null
       : pending ?? (wasAnswered(state, state.pendingPrompt) ? null : state.pendingPrompt);
     const stats = (snapshot.stats as Stats) ?? state.stats;
+    const snapshotModels = modelCapabilitiesFrom(snapshot.models);
     return {
       ...state,
       agents: applyAgentRuns(agents, stats?.agent_runs),
@@ -179,7 +207,16 @@ export function reduceEngine(state: EngineState, event: EngineEvent): EngineStat
       stats,
       pendingPrompt: nextPending,
       error: null,
+      modelCapabilities:
+        snapshotModels && Object.keys(snapshotModels).length > 0
+          ? snapshotModels
+          : state.modelCapabilities,
     };
+  }
+
+  if (type === "ModelCatalogUpdated") {
+    const models = modelCapabilitiesFrom(event.models);
+    return models ? { ...state, modelCapabilities: models } : state;
   }
 
   if (type === "ChatMessageStarted") {

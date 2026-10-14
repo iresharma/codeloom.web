@@ -144,6 +144,19 @@ export type Stats = {
   models?: string[];
 };
 
+export type ModelCapability = {
+  id: string;
+  name?: string;
+  supports_reasoning: boolean;
+  mandatory?: boolean;
+  default_effort?: string | null;
+  default_enabled?: boolean | null;
+  /** Allowed effort levels for this model, highest first. `null`/absent
+   * with supports_reasoning true means every level is accepted. */
+  supported_efforts?: string[] | null;
+  supports_max_tokens?: boolean;
+};
+
 export type PendingPrompt = {
   prompt_id: string;
   question: string;
