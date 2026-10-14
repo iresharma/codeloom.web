@@ -320,16 +320,32 @@ textarea:focus-visible {
   }
 }
 
+/* Loader: a small shuttle spinning between two warp threads. */
+.loader-shuttle {
+  animation: loader-spin 1.1s linear infinite;
+}
+
+@keyframes loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .loom-warp,
   .loom-weft,
-  .loom-shuttle {
+  .loom-shuttle,
+  .loader-shuttle {
     animation: none;
   }
 
   .loom-weft {
     stroke-dashoffset: 0;
     opacity: 0.9;
+  }
+
+  .loader-shuttle {
+    transform: rotate(45deg);
   }
 }
 

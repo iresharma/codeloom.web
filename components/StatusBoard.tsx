@@ -17,6 +17,7 @@ import {
 import { EmptyState } from "./EmptyState";
 import { GitHubAuthPrompt } from "./GitHubAuthPrompt";
 import { StatusDot } from "./StatusDot";
+import Loader from "./Loader";
 
 function SessionCard({
   session,
@@ -86,7 +87,9 @@ export function StatusBoard({ projectId }: { projectId?: string }) {
       </header>
 
       {loading ? (
-        <p className="px-4 py-8 text-muted">Loading sessions…</p>
+        <div className="px-4 py-8">
+          <Loader size="md" label="Loading sessions…" />
+        </div>
       ) : showAuthPrompt && projects.length === 0 ? (
         <GitHubAuthPrompt fill />
       ) : error && projects.length === 0 ? (

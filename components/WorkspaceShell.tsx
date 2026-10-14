@@ -4,6 +4,7 @@ import { WorkspaceProvider } from "@/lib/useWorkspace";
 import { useAuth } from "@/lib/useAuth";
 
 import { Sidebar } from "./Sidebar";
+import Loader from "./Loader";
 
 export function WorkspaceShell({ children }: { children: import("react").ReactNode }) {
   const { token, user, ready } = useAuth();
@@ -11,7 +12,7 @@ export function WorkspaceShell({ children }: { children: import("react").ReactNo
   if (!ready || !token || !user) {
     return (
       <div className="flex h-screen items-center px-6">
-        <p className="text-[13px] text-muted">Loading…</p>
+        <Loader size="lg" label="Loading…" />
       </div>
     );
   }

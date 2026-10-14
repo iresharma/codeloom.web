@@ -6,6 +6,7 @@ import { highlightCode, languageForPath } from "@/lib/highlight";
 import "highlight.js/styles/github-dark.css";
 
 import { DiffView } from "./DiffView";
+import Loader from "./Loader";
 
 export function FilePane({
   path,
@@ -47,7 +48,9 @@ export function FilePane({
         </button>
       </header>
       {loading && !content && original == null ? (
-        <p className="px-4 py-6 text-[13px] text-muted">Loading…</p>
+        <div className="px-4 py-6">
+          <Loader size="md" label="Loading…" />
+        </div>
       ) : error && !content && original == null ? (
         <p className="px-4 py-6 text-[13px] text-danger">{error}</p>
       ) : showDiff ? (

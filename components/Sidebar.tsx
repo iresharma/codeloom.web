@@ -16,6 +16,7 @@ import {
   threadMatches,
   type ProjectWithSessions,
 } from "@/lib/workspace";
+import Loader from "./Loader";
 
 import { AddRepoPanel } from "./AddRepoPanel";
 
@@ -134,7 +135,9 @@ export function Sidebar({ user }: { user: User }) {
 
       <nav className="min-h-0 flex-1 overflow-auto px-2 pb-2" aria-label="Projects and sessions">
         {loading ? (
-          <p className="px-1 py-2 text-muted">Loading…</p>
+          <div className="px-1 py-2">
+            <Loader size="sm" label="Loading…" />
+          </div>
         ) : projects.length === 0 ? (
           <p className="px-1 py-2 text-muted">Add a GitHub repository to start an agent.</p>
         ) : visible.every((row) => row.sessions.length === 0) ? (
