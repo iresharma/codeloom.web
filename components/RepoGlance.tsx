@@ -7,6 +7,7 @@ import type { ProjectOverview, WorkItem } from "@/lib/types";
 import { useAuth } from "@/lib/useAuth";
 import { useWorkspace } from "@/lib/useWorkspace";
 import { formatWhen } from "@/lib/workspace";
+import Loader from "./Loader";
 
 export function RepoGlance({ projectId }: { projectId: string }) {
   const { token } = useAuth(false);
@@ -33,7 +34,12 @@ export function RepoGlance({ projectId }: { projectId: string }) {
 
   if (githubAuthExpired) return null;
   if (error) return <p className="mt-8 text-[12px] text-danger">{error}</p>;
-  if (!overview) return <p className="mt-8 text-[12px] text-muted">Loading repository…</p>;
+  if (!overview)
+    return (
+      <div className="mt-8">
+        <Loader size="sm" label="Loading repository…" />
+      </div>
+    );
 
   const facts = [
     overview.language ?? "No language",

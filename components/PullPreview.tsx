@@ -8,6 +8,7 @@ import type { ChatItem, PullFile, PullPreview as PullPreviewData } from "@/lib/t
 import { useAuth } from "@/lib/useAuth";
 
 import { Markdown } from "./Markdown";
+import Loader from "./Loader";
 
 const PULL_REF = /https:\/\/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/;
 
@@ -74,7 +75,11 @@ function PullCard({ projectId, number }: { projectId: string; number: number }) 
     return <p className="border border-line px-3 py-2 text-[12px] text-danger">{error}</p>;
   }
   if (!pull) {
-    return <p className="border border-line px-3 py-2 text-[12px] text-muted">Loading pull request…</p>;
+    return (
+      <div className="border border-line px-3 py-2">
+        <Loader size="sm" label="Loading pull request…" />
+      </div>
+    );
   }
 
   const label = pull.draft ? "Draft" : pull.state === "open" ? "Open" : pull.state;
